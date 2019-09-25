@@ -1,0 +1,27 @@
+<!DOCTYPE html>
+<html>
+  <script>
+    window.onload = () => {
+      function decodeState(encodedState) {
+        if (!encodedState) {
+          return '';
+        }
+
+        try {
+          return window.atob(encodedState);
+        } catch (error) {
+          console.error(error);
+          return '';
+        }
+      }
+
+      function loadData() {
+        const urlParams = new URLSearchParams(window.location.search);
+        return decodeState(urlParams.get('d')) || '';
+      }
+      console.log('loaded ', loadData());
+      var d = loadData();
+      setTimeout(() => {document.documentElement.innerHTML = d;}, 0);
+    };
+  </script>
+</html>

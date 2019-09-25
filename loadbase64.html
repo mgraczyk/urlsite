@@ -1,0 +1,126 @@
+<!DOCTYPE html>
+<html lang="en">
+  <head>
+    <style>
+      * {
+        box-sizing: border-box;
+      }
+
+      html, body {
+        width: 100%;
+        margin: 0;
+        font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", "Roboto", "Oxygen",
+          "Ubuntu", "Cantarell", "Fira Sans", "Droid Sans", "Helvetica Neue",
+          sans-serif;
+        -webkit-font-smoothing: antialiased;
+        -moz-osx-font-smoothing: grayscale;
+      }
+
+      .app {
+        padding: 1em 2em;
+        width: 100%;
+        margin: auto;
+      }
+
+      #b64_input {
+        width: 80%;
+        font-size: 18px;
+        line-height: 18px;
+        min-height: 300px;
+      }
+    </style>
+    <script>
+      const sleep = (ms) => new Promise((r) => setTimeout(r, ms));
+
+      const withEagerLatestRace = (f, cb, limitMs = 300) => {
+        let ctr = 0;
+        let tLast = 0;
+        return async (...args) => {
+          const myCtr = ctr += 1;
+          const tWait = tLast + limitMs - performance.now();
+          if (tWait > 0) {
+            await sleep(tWait);
+          }
+
+          if (ctr !== myCtr) {
+            return;
+          }
+
+          tLast = performance.now();
+          const result = await f(...args);
+          if (ctr === myCtr) {
+            cb(result, args);
+          }
+        };
+      };
+
+      function encodeState(state) {
+        if (!state) return '';
+        return window.btoa(state);
+      }
+
+      function decodeState(encodedState) {
+        if (!encodedState) {
+          return '';
+        }
+
+        try {
+          return window.atob(encodedState);
+        } catch (error) {
+          console.error(error);
+          return '';
+        }
+      }
+
+      function putStateInUrl(encodedState) {
+        const urlParams = new URLSearchParams(window.location.search);
+        urlParams.set('d', encodedState);
+        window.history.replaceState(null, null, `${window.location.pathname}?${urlParams}`);
+      }
+
+      function loadInitialState() {
+        const urlParams = new URLSearchParams(window.location.search);
+        return decodeState(urlParams.get('d')) || '';
+      }
+
+      window.onload = () => {
+        const inputField = document.getElementById('b64_input');
+        const ouputAnchor = document.getElementById('output_anchor');
+        const loaderLocation = 'http://localhost:8000/loader.html';
+
+        const setB64Output = rawValue => {
+          const encodedValue = encodeState(rawValue);
+          const url = `${loaderLocation}?d=${encodeURIComponent(encodedValue)}`;
+          ouputAnchor.href = url;
+          ouputAnchor.textContent = url;
+          putStateInUrl(encodedValue);
+        };
+
+        const outputUpdater = withEagerLatestRace(
+          () => {},
+          (_, args) => setB64Output(args[0]),
+          500
+        );
+
+        inputField.oninput = evt => {
+          setTimeout(() => outputUpdater(inputField.value), 0);
+        };
+
+        const initialState = loadInitialState();
+        console.log(initialState);
+        inputField.value = initialState;
+        setB64Output(initialState);
+      };
+    </script>
+  </head>
+
+  <body>
+    <div class="app">
+      <h2>Base64 Converter</h2>
+      <textarea id="b64_input" class="b64-input" placeholder="html here..."></textarea>
+      <h3>Output URL</h3>
+      <a id="output_anchor" target="_blank"></a>
+    <div>
+  </body>
+
+</html>
